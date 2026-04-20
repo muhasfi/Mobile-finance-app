@@ -8,6 +8,32 @@ import '../../core/services/repositories.dart';
 import '../../core/utils/router.dart';
 import '../../core/widgets/shared_widgets.dart';
 
+/// Helper: tampilkan bottom sheet sambil sembunyikan navbar dengan animasi.
+Future<T?> _showProfileSheet<T>(
+  BuildContext context,
+  WidgetRef ref,
+  WidgetBuilder builder,
+) async {
+  // Sembunyikan navbar
+  ref.read(navbarVisibleProvider.notifier).state = false;
+
+  final result = await showModalBottomSheet<T>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: FinaColors.surface,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: builder,
+  );
+
+  // Tampilkan kembali navbar
+  if (context.mounted) {
+    ref.read(navbarVisibleProvider.notifier).state = true;
+  }
+
+  return result;
+}
+
 final profileProvider =
     FutureProvider.autoDispose<UserModel>((_) => AuthRepository().getMe());
 
@@ -21,224 +47,301 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: FinaColors.bg,
-      body: SafeArea(
-        child: async.when(
-          data: (user) => ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              const SizedBox(height: 8),
-
-              // ── Avatar + name ──────────────────────────────────────────────
-              Center(
-                child: Column(children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: const BoxDecoration(
-                      gradient: kCopperGradient,
-                      shape: BoxShape.circle,
+      body: async.when(
+        data: (user) => CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _ProfileHeader(user: user, ref: ref)),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _SectionLabel('Akun'),
+                  _MenuCard(items: [
+                    _MenuItem(
+                      icon: Icons.person_outline_rounded,
+                      iconBg: FinaColors.icBlue,
+                      iconColor: FinaColors.blue,
+                      label: 'Nama',
+                      value: user.name,
+                      onTap: () => _showEditProfile(context, ref, user),
                     ),
-                    alignment: Alignment.center,
+                    _MenuItem(
+                      icon: Icons.email_outlined,
+                      iconBg: FinaColors.icBlue,
+                      iconColor: FinaColors.blue,
+                      label: 'Email',
+                      value: user.email,
+                    ),
+                    _MenuItem(
+                      icon: Icons.lock_outline_rounded,
+                      iconBg: FinaColors.icPurple,
+                      iconColor: FinaColors.purple,
+                      label: 'Ganti Password',
+                      onTap: () => _showChangePassword(context, ref),
+                    ),
+                    _MenuItem(
+                      icon: Icons.currency_exchange_rounded,
+                      iconBg: FinaColors.icCopper,
+                      iconColor: FinaColors.copper2,
+                      label: 'Mata Uang',
+                      value: user.currency,
+                      onTap: () => _showEditProfile(context, ref, user),
+                    ),
+                    _MenuItem(
+                      icon: Icons.schedule_rounded,
+                      iconBg: FinaColors.icBlue,
+                      iconColor: FinaColors.blue,
+                      label: 'Timezone',
+                      value: user.timezone,
+                      onTap: () => _showEditProfile(context, ref, user),
+                    ),
+                  ]),
+                  const SizedBox(height: 20),
+                  _LogoutButton(onTap: () => _confirmLogout(context, ref)),
+                  const SizedBox(height: 24),
+                  Center(
                     child: Text(
-                      user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
-                      style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white),
+                      'Fina v1.0.0',
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelSmall
+                          ?.copyWith(color: FinaColors.muted),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Text(user.name,
-                      style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 4),
-                  Text(user.email,
-                      style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 8),
-                  FinaPill(user.role, variant: PillVariant.copper),
                 ]),
               ),
-
-              const SizedBox(height: 28),
-
-              // ── Akun ───────────────────────────────────────────────────────
-              const _SectionTitle('Akun'),
-              FinaCard(
-                padding: EdgeInsets.zero,
-                child: Column(children: [
-                  _ProfileTile(
-                    icon: Icons.person_outline,
-                    label: 'Nama',
-                    value: user.name,
-                    onTap: () => _showEditProfile(context, ref, user),
-                  ),
-                  const FinaDivider(indent: 56),
-                  _ProfileTile(
-                    icon: Icons.email_outlined,
-                    label: 'Email',
-                    value: user.email,
-                  ),
-                  const FinaDivider(indent: 56),
-                  _ProfileTile(
-                    icon: Icons.currency_exchange,
-                    label: 'Mata Uang',
-                    value: user.currency,
-                    onTap: () => _showEditProfile(context, ref, user),
-                  ),
-                  const FinaDivider(indent: 56),
-                  _ProfileTile(
-                    icon: Icons.schedule_outlined,
-                    label: 'Timezone',
-                    value: user.timezone,
-                    onTap: () => _showEditProfile(context, ref, user),
-                  ),
-                ]),
-              ),
-
-              const SizedBox(height: 20),
-              const _SectionTitle('Keamanan'),
-              FinaCard(
-                padding: EdgeInsets.zero,
-                child: Column(children: [
-                  _ProfileTile(
-                    icon: Icons.lock_outline,
-                    label: 'Ganti Password',
-                    onTap: () => _showChangePassword(context),
-                  ),
-                  const FinaDivider(indent: 56),
-                  _ProfileTile(
-                    icon: Icons.category_outlined,
-                    label: 'Kelola Kategori',
-                    onTap: () => context.push('/categories'),
-                  ),
-                  const FinaDivider(indent: 56),
-                  _ProfileTile(
-                    icon: Icons.repeat_rounded,
-                    label: 'Transaksi Berulang',
-                    onTap: () => context.push('/recurring'),
-                  ),
-                ]),
-              ),
-
-              const SizedBox(height: 20),
-              const _SectionTitle('Fitur'),
-              FinaCard(
-                padding: EdgeInsets.zero,
-                child: Column(children: [
-                  _ProfileTile(
-                    icon: Icons.smart_toy_outlined,
-                    label: 'Fina AI Chat',
-                    value: 'Tanya soal keuangan',
-                    onTap: () => context.push('/ai/chat'),
-                  ),
-                  const FinaDivider(indent: 56),
-                  _ProfileTile(
-                    icon: Icons.auto_awesome_outlined,
-                    label: 'AI Insight Bulanan',
-                    value: 'Analisa otomatis',
-                    onTap: () => context.push('/ai/insight'),
-                  ),
-                  const FinaDivider(indent: 56),
-                  _ProfileTile(
-                    icon: Icons.upload_file_outlined,
-                    label: 'Import CSV Bank',
-                    value: 'BCA, Mandiri, BRI, BNI',
-                    onTap: () => context.push('/import'),
-                  ),
-                ]),
-              ),
-
-              const SizedBox(height: 20),
-              const _SectionTitle('Lainnya'),
-              FinaCard(
-                padding: EdgeInsets.zero,
-                child: _ProfileTile(
-                  icon: Icons.logout_rounded,
-                  label: 'Keluar',
-                  valueColor: FinaColors.red,
-                  onTap: () => _confirmLogout(context, ref),
-                ),
-              ),
-
-              const SizedBox(height: 40),
-              Center(
-                child: Text('Fina v1.0.0',
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelSmall
-                        ?.copyWith(color: FinaColors.muted)),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-          loading: () => const Center(
-              child: CircularProgressIndicator(color: FinaColors.copper)),
-          error: (e, _) => FinaErrorWidget(
-            message: e.toString(),
-            onRetry: () => ref.refresh(profileProvider),
-          ),
+            ),
+          ],
+        ),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: FinaColors.copper)),
+        error: (e, _) => FinaErrorWidget(
+          message: e.toString(),
+          onRetry: () => ref.refresh(profileProvider),
         ),
       ),
     );
   }
 
   void _showEditProfile(BuildContext context, WidgetRef ref, UserModel user) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: FinaColors.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => _EditProfileSheet(
+    _showProfileSheet(
+      context,
+      ref,
+      (_) => _EditProfileSheet(
         user: user,
         onSaved: () => ref.refresh(profileProvider),
       ),
     );
   }
 
-  void _showChangePassword(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: FinaColors.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => const _ChangePasswordSheet(),
+  void _showChangePassword(BuildContext context, WidgetRef ref) {
+    _showProfileSheet(
+      context,
+      ref,
+      (_) => const _ChangePasswordSheet(),
     );
   }
 
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: FinaColors.surface,
-        title: const Text('Keluar?'),
-        content: const Text('Kamu akan keluar dari akun ini.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Keluar dari Fina?'),
+        content: const Text(
+          'Semua data lokal akan dihapus. Kamu perlu login kembali.',
+          style: TextStyle(color: FinaColors.text2, fontSize: 13),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child:
+                const Text('Batal', style: TextStyle(color: FinaColors.text2)),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child:
-                const Text('Keluar', style: TextStyle(color: FinaColors.red)),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Keluar',
+                style: TextStyle(
+                    color: FinaColors.red, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
     );
-    if (confirm == true && context.mounted) {
-      await AuthRepository().logout();
-      // Update auth state → GoRouter redirect otomatis ke /login
-      ref.read(authStateProvider.notifier).state = false;
-      context.go('/login');
-    }
+    if (confirm != true) return;
+    await AuthRepository().logout();
+    if (!context.mounted) return;
+    ref.read(authStateProvider.notifier).state = false;
+    context.go('/login');
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-class _SectionTitle extends StatelessWidget {
+// Profile Header
+// ─────────────────────────────────────────────────────────────────────────────
+class _ProfileHeader extends StatelessWidget {
+  final UserModel user;
+  final WidgetRef ref;
+  const _ProfileHeader({required this.user, required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = user.name
+        .trim()
+        .split(' ')
+        .take(2)
+        .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
+        .join();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 60, 20, 28),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF1A1520), FinaColors.bg],
+        ),
+      ),
+      child: Column(children: [
+        Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                gradient: kCopperGradient,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: FinaColors.copper.withOpacity(0.5),
+                  width: 2.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: FinaColors.copper.withOpacity(0.25),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                initials.isNotEmpty ? initials : 'U',
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _showEdit(context),
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: FinaColors.surface2,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: FinaColors.border, width: 1.5),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.edit_rounded,
+                    size: 13, color: FinaColors.text2),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Text(
+          user.name,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: FinaColors.text,
+            letterSpacing: -0.3,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          user.email,
+          style: const TextStyle(fontSize: 13, color: FinaColors.text2),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _Chip(
+                label: user.role,
+                color: FinaColors.copper,
+                bg: FinaColors.icCopper),
+            const SizedBox(width: 8),
+            _Chip(
+              label: user.currency,
+              color: FinaColors.blue,
+              bg: FinaColors.icBlue,
+              icon: Icons.currency_exchange_rounded,
+            ),
+          ],
+        ),
+      ]),
+    );
+  }
+
+  void _showEdit(BuildContext context) {
+    _showProfileSheet(
+      context,
+      ref,
+      (_) => _EditProfileSheet(
+        user: user,
+        onSaved: () => ref.refresh(profileProvider),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chip kecil
+// ─────────────────────────────────────────────────────────────────────────────
+class _Chip extends StatelessWidget {
   final String label;
-  const _SectionTitle(this.label);
+  final Color color;
+  final Color bg;
+  final IconData? icon;
+  const _Chip(
+      {required this.label, required this.color, required this.bg, this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 11, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(label,
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Section label
+// ─────────────────────────────────────────────────────────────────────────────
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel(this.label);
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -253,15 +356,45 @@ class _SectionTitle extends StatelessWidget {
       );
 }
 
-class _ProfileTile extends StatelessWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// Menu Card
+// ─────────────────────────────────────────────────────────────────────────────
+class _MenuCard extends StatelessWidget {
+  final List<_MenuItem> items;
+  const _MenuCard({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return FinaCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: List.generate(
+            items.length,
+            (i) => Column(children: [
+                  if (i > 0) const FinaDivider(indent: 56),
+                  items[i],
+                ])),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Menu Item
+// ─────────────────────────────────────────────────────────────────────────────
+class _MenuItem extends StatelessWidget {
   final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
   final String label;
   final String? value;
   final Color? valueColor;
   final VoidCallback? onTap;
 
-  const _ProfileTile({
+  const _MenuItem({
     required this.icon,
+    required this.iconBg,
+    required this.iconColor,
     required this.label,
     this.value,
     this.valueColor,
@@ -269,35 +402,149 @@ class _ProfileTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: FinaColors.surface2,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          alignment: Alignment.center,
-          child: Icon(icon, size: 18, color: valueColor ?? FinaColors.text2),
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: iconBg,
+          borderRadius: BorderRadius.circular(10),
         ),
-        title: Text(label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: valueColor ?? FinaColors.text,
-            )),
-        trailing: value != null
-            ? Text(value!,
-                style: const TextStyle(fontSize: 13, color: FinaColors.text2))
-            : (onTap != null
-                ? const Icon(Icons.chevron_right_rounded,
-                    color: FinaColors.text2, size: 18)
-                : null),
-      );
+        alignment: Alignment.center,
+        child: Icon(icon, size: 17, color: valueColor ?? iconColor),
+      ),
+      title: Text(label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: valueColor ?? FinaColors.text,
+          )),
+      trailing: value != null
+          ? Text(value!,
+              style: const TextStyle(fontSize: 13, color: FinaColors.text2))
+          : (onTap != null
+              ? const Icon(Icons.chevron_right_rounded,
+                  color: FinaColors.text2, size: 18)
+              : null),
+    );
+  }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Feature Card
+// ─────────────────────────────────────────────────────────────────────────────
+class _AiFeatureCard extends StatelessWidget {
+  final VoidCallback onChat;
+  final VoidCallback onInsight;
+  const _AiFeatureCard({required this.onChat, required this.onInsight});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF16112A),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0x30A078DC)),
+      ),
+      child: Column(children: [
+        _AiTile(
+          icon: Icons.smart_toy_outlined,
+          title: 'Fina AI Chat',
+          subtitle: 'Tanya apa saja soal keuangan kamu',
+          onTap: onChat,
+        ),
+        const Divider(
+            height: 1, thickness: 1, color: Color(0x20A078DC), indent: 56),
+        _AiTile(
+          icon: Icons.auto_awesome_outlined,
+          title: 'AI Insight Bulanan',
+          subtitle: 'Analisa otomatis pengeluaran & tren',
+          onTap: onInsight,
+        ),
+      ]),
+    );
+  }
+}
+
+class _AiTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  const _AiTile(
+      {required this.icon,
+      required this.title,
+      required this.subtitle,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: const Color(0x30A078DC),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, size: 17, color: FinaColors.purple),
+      ),
+      title: Text(title,
+          style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: FinaColors.text)),
+      subtitle: Text(subtitle,
+          style: const TextStyle(fontSize: 12, color: FinaColors.text2)),
+      trailing: const Icon(Icons.chevron_right_rounded,
+          color: FinaColors.text2, size: 18),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Logout Button
+// ─────────────────────────────────────────────────────────────────────────────
+class _LogoutButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _LogoutButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0x14E05C5C),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0x30E05C5C)),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.logout_rounded, color: FinaColors.red, size: 18),
+            SizedBox(width: 8),
+            Text('Keluar dari Akun',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: FinaColors.red)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Edit Profile Sheet
 // ─────────────────────────────────────────────────────────────────────────────
 class _EditProfileSheet extends StatefulWidget {
   final UserModel user;
@@ -312,7 +559,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   late final TextEditingController _nameCtrl;
   String _currency = 'IDR';
   bool _loading = false;
-
   static const _currencies = ['IDR', 'USD', 'EUR', 'SGD', 'MYR', 'JPY'];
 
   @override
@@ -357,6 +603,14 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 40,
+          height: 4,
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+              color: FinaColors.border,
+              borderRadius: BorderRadius.circular(99)),
+        ),
         Text('Edit Profil', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 20),
         TextField(
@@ -371,10 +625,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           decoration: const InputDecoration(labelText: 'Mata Uang'),
           items: _currencies
               .map((c) => DropdownMenuItem(
-                    value: c,
-                    child:
-                        Text(c, style: const TextStyle(color: FinaColors.text)),
-                  ))
+                  value: c,
+                  child:
+                      Text(c, style: const TextStyle(color: FinaColors.text))))
               .toList(),
           onChanged: (v) => setState(() => _currency = v!),
         ),
@@ -385,6 +638,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Change Password Sheet
 // ─────────────────────────────────────────────────────────────────────────────
 class _ChangePasswordSheet extends StatefulWidget {
   const _ChangePasswordSheet();
@@ -450,6 +705,14 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 40,
+          height: 4,
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+              color: FinaColors.border,
+              borderRadius: BorderRadius.circular(99)),
+        ),
         Text('Ganti Password', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 20),
         TextField(

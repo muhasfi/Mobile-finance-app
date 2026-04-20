@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:finance_app_mobile/core/services/api_service.dart';
+import 'package:finance_app_mobile/core/widgets/icon_circle.dart';
 import '../../core/constants/theme.dart';
 import '../../core/services/models.dart';
 import '../../core/services/repositories.dart';
-import '../../core/widgets/shared_widgets.dart';
+import '../../core/widgets/shared_widgets.dart' hide IconCircle;
 
 final accountsProvider = FutureProvider.autoDispose<List<AccountModel>>(
     (_) => AccountRepository().getAll());
@@ -168,9 +169,9 @@ class _AccountCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Row(children: [
         IconCircle(
-            emoji: account.icon ?? '💳',
-            bgColor: FinaColors.icCopper,
-            size: 44),
+          icon: account.icon,
+          bgColor: FinaColors.icCopper,
+        ),
         const SizedBox(width: 14),
         Expanded(
           child:

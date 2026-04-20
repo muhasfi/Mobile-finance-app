@@ -9,7 +9,10 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/constants/theme.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/models.dart';
+import '../../core/services/repositories.dart';
 import '../../core/widgets/shared_widgets.dart';
+import '../import/import_csv_screen.dart';
 
 // ── Safe numeric parser ──────────────────────────────────────────────────────
 double _safeDouble(dynamic v) {
@@ -144,7 +147,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 2, vsync: this);
+    _tab = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -164,13 +167,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 2),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Laporan & Export',
+              Text('Laporan, Import & Export',
                   style: Theme.of(context)
                       .textTheme
                       .headlineMedium
                       ?.copyWith(fontSize: 22)),
               const SizedBox(height: 2),
-              const Text('Export transaksi ke CSV atau PDF',
+              const Text('Export, analisis tren, dan import data transaksi',
                   style: TextStyle(fontSize: 12, color: FinaColors.text2)),
             ]),
           ),
@@ -198,6 +201,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                 tabs: const [
                   Tab(text: 'Filter & Export'),
                   Tab(text: 'Tren 6 Bulan'),
+                  Tab(text: 'Import CSV'),
                 ],
               ),
             ),
@@ -209,6 +213,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
               children: const [
                 _FilterExportTab(),
                 _TrendTab(),
+                ImportCsvTab(),
               ],
             ),
           ),

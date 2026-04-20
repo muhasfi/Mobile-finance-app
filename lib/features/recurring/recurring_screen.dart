@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finance_app_mobile/core/services/api_service.dart';
+import 'package:finance_app_mobile/core/widgets/icon_circle.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/theme.dart';
 import '../../core/services/models.dart';
 import '../../core/services/repositories.dart';
-import '../../core/widgets/shared_widgets.dart';
+import '../../core/widgets/shared_widgets.dart' hide IconCircle;
 
 final recurringProvider = FutureProvider.autoDispose<List<RecurringPlanModel>>(
     (_) => RecurringRepository().getAll());
@@ -141,7 +142,7 @@ class _RecurringTile extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       child: Row(children: [
         IconCircle(
-          emoji: plan.category?.icon ?? (plan.type == 'income' ? '📥' : '📤'),
+          icon: plan.category?.icon ?? (plan.type == 'income' ? '📥' : '📤'),
           bgColor: plan.isActive
               ? (plan.type == 'income' ? FinaColors.icGreen : FinaColors.icRed)
               : FinaColors.surface2,
@@ -298,7 +299,7 @@ class _RecurringFormSheetState extends State<_RecurringFormSheet> {
             children: accounts
                 .map((a) => ListTile(
                       leading: IconCircle(
-                          emoji: a.icon ?? '💳', bgColor: FinaColors.icCopper),
+                          icon: a.icon ?? '💳', bgColor: FinaColors.icCopper),
                       title: Text(a.name,
                           style: const TextStyle(color: FinaColors.text)),
                       subtitle: Text(formatCurrency(a.balance),
@@ -348,7 +349,7 @@ class _RecurringFormSheetState extends State<_RecurringFormSheet> {
             children: filtered
                 .map((c) => ListTile(
                       leading: IconCircle(
-                          emoji: c.icon ?? '📌', bgColor: FinaColors.icCopper),
+                          icon: c.icon ?? '📌', bgColor: FinaColors.icCopper),
                       title: Text(c.name,
                           style: const TextStyle(color: FinaColors.text)),
                       trailing: _category?.id == c.id

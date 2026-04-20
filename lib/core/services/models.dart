@@ -77,6 +77,17 @@ class AccountModel {
         type: j['type'] ?? 'cash',
         isActive: j['is_active'] ?? true,
       );
+
+  // FIX: diperlukan agar DropdownButton bisa mencocokkan value dengan benar
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AccountModel &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 // ── Category ──────────────────────────────────────────────────────────────────
@@ -137,7 +148,7 @@ class TransactionModel {
         amount: (j['amount'] ?? 0).toDouble(),
         date: j['date'] ?? '',
         note: j['note'],
-        imageUrl: j['image_url'],
+        imageUrl: j['receipt_url'],
         tags: List<String>.from(j['tags'] ?? []),
         account:
             j['account'] != null ? AccountModel.fromJson(j['account']) : null,
@@ -149,6 +160,29 @@ class TransactionModel {
   bool get isIncome => type == 'income';
   bool get isExpense => type == 'expense';
   bool get isTransfer => type == 'transfer';
+}
+
+// ── Import Result ─────────────────────────────────────────────────────────────
+class ImportResultModel {
+  final int imported;
+  final int skipped;
+  final int total;
+  final List<String> errors;
+
+  const ImportResultModel({
+    required this.imported,
+    required this.skipped,
+    required this.total,
+    required this.errors,
+  });
+
+  factory ImportResultModel.fromJson(Map<String, dynamic> j) =>
+      ImportResultModel(
+        imported: j['imported'] ?? 0,
+        skipped: j['skipped'] ?? 0,
+        total: j['total'] ?? 0,
+        errors: List<String>.from(j['errors'] ?? []),
+      );
 }
 
 // ── Budget ────────────────────────────────────────────────────────────────────
@@ -309,9 +343,9 @@ class DashboardSummary {
 
   factory DashboardSummary.fromJson(Map<String, dynamic> j) => DashboardSummary(
         totalBalance: parseToDouble(j['total_balance']),
-        incomeThisMonth: parseToDouble(j['income']), // ✅ FIX
-        expenseThisMonth: parseToDouble(j['expense']), // ✅ FIX
-        netThisMonth: parseToDouble(j['balance']), // ✅ FIX
+        incomeThisMonth: parseToDouble(j['income']),
+        expenseThisMonth: parseToDouble(j['expense']),
+        netThisMonth: parseToDouble(j['balance']),
         accounts: (j['accounts'] as List? ?? [])
             .map((a) => AccountModel.fromJson(a))
             .toList(),

@@ -66,37 +66,47 @@ class BudgetScreen extends ConsumerWidget {
                       .headlineMedium
                       ?.copyWith(fontSize: 22)),
               const Spacer(),
-              Row(children: [
-                GestureDetector(
-                  onTap: () {
-                    final d = DateTime(period.year, period.month - 1);
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime(period.year, period.month),
+                    firstDate: DateTime(2020),
+                    lastDate:
+                        DateTime(DateTime.now().year, DateTime.now().month + 3),
+                    builder: (ctx, child) => Theme(
+                      data: Theme.of(ctx).copyWith(
+                        colorScheme:
+                            const ColorScheme.dark(primary: FinaColors.copper),
+                      ),
+                      child: child!,
+                    ),
+                  );
+                  if (picked != null && context.mounted) {
                     ref.read(_budgetPeriodProvider.notifier).state =
-                        _BudgetPeriod(d.month, d.year);
-                  },
-                  child: const Icon(Icons.chevron_left_rounded,
-                      color: FinaColors.text2),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    '${_months[period.month - 1]} ${period.year}',
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600),
+                        _BudgetPeriod(picked.month, picked.year);
+                  }
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: FinaColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: FinaColors.border),
                   ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.calendar_month_outlined,
+                        size: 14, color: FinaColors.copper),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${_months[period.month - 1]} ${period.year}',
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ]),
                 ),
-                GestureDetector(
-                  onTap: () {
-                    final now = DateTime.now();
-                    final d = DateTime(period.year, period.month + 1);
-                    if (!d.isAfter(DateTime(now.year, now.month))) {
-                      ref.read(_budgetPeriodProvider.notifier).state =
-                          _BudgetPeriod(d.month, d.year);
-                    }
-                  },
-                  child: const Icon(Icons.chevron_right_rounded,
-                      color: FinaColors.text2),
-                ),
-              ]),
+              ),
             ]),
           ),
           const SizedBox(height: 16),
@@ -492,6 +502,8 @@ class _BudgetFormSheetState extends State<_BudgetFormSheet> {
             ]),
           ),
         ),
+
+        const SizedBox(height: 16),
 
         // 🔽 TAMBAH DI SINI
         Column(

@@ -114,25 +114,6 @@ class TransactionsScreen extends ConsumerWidget {
           ),
         ]),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'transfer',
-            onPressed: () => context.push('/transactions/transfer'),
-            backgroundColor: FinaColors.surface2,
-            child: const Icon(Icons.swap_horiz_rounded, color: FinaColors.blue),
-          ),
-          const SizedBox(height: 8),
-          FloatingActionButton(
-            heroTag: 'add',
-            onPressed: () => context.push('/transactions/add'),
-            backgroundColor: FinaColors.copper,
-            foregroundColor: Colors.white,
-            child: const Icon(Icons.add_rounded),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -309,6 +290,21 @@ class _TxTile extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: FinaPill(tx.tags.first, variant: PillVariant.blue),
+              ),
+            if (tx.imageUrl != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.attach_file_rounded,
+                        size: 11, color: FinaColors.text2),
+                    SizedBox(width: 2),
+                    Text('Bukti',
+                        style:
+                            TextStyle(fontSize: 10, color: FinaColors.text2)),
+                  ],
+                ),
               ),
           ]),
         ]),

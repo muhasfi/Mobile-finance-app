@@ -107,6 +107,23 @@ class AuthRepository {
       throw ApiException.fromDio(e);
     }
   }
+
+  Future<void> resendVerification() async {
+    try {
+      await _api.post(ApiConstants.emailResend);
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  Future<bool> checkEmailVerified() async {
+    try {
+      final res = await _api.get(ApiConstants.emailStatus);
+      return res['data']['email_verified'] as bool? ?? false;
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,13 +217,23 @@ class TransactionRepository {
     String imagePath,
   ) async {
     try {
+      final Map<String, dynamic> formFields =
+          data.map((k, v) => MapEntry(k, v is num ? v.toString() : v));
+
       final formData = FormData.fromMap({
-        ...data,
-        'image': await MultipartFile.fromFile(imagePath),
+        ...formFields,
+        'receipt': await MultipartFile.fromFile(
+          imagePath,
+          filename: imagePath.split('/').last,
+        ),
       });
+
       final res = await _api.dio.post<Map<String, dynamic>>(
         ApiConstants.transactions,
         data: formData,
+        options: Options(
+          headers: {'Content-Type': 'multipart/form-data'},
+        ),
       );
       return TransactionModel.fromJson(
           res.data!['data'] as Map<String, dynamic>);
@@ -232,14 +259,24 @@ class TransactionRepository {
     String imagePath,
   ) async {
     try {
+      final Map<String, dynamic> formFields =
+          data.map((k, v) => MapEntry(k, v is num ? v.toString() : v));
+
       final formData = FormData.fromMap({
-        ...data,
+        ...formFields,
         '_method': 'PUT', // Laravel method spoofing
-        'image': await MultipartFile.fromFile(imagePath),
+        'receipt': await MultipartFile.fromFile(
+          imagePath,
+          filename: imagePath.split('/').last,
+        ),
       });
+
       final res = await _api.dio.post<Map<String, dynamic>>(
         '${ApiConstants.transactions}/$id',
         data: formData,
+        options: Options(
+          headers: {'Content-Type': 'multipart/form-data'},
+        ),
       );
       return TransactionModel.fromJson(
           res.data!['data'] as Map<String, dynamic>);
@@ -552,6 +589,51 @@ class NotificationRepository {
   Future<void> delete(String id) async {
     try {
       await _api.delete('${ApiConstants.notifications}/$id');
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Import Repository
+// ─────────────────────────────────────────────────────────────────────────────
+class ImportRepository {
+  final ApiService _api;
+  ImportRepository([ApiService? api]) : _api = api ?? ApiService();
+
+  /// Upload & import CSV langsung ke server.
+  /// [filePath]    : path lokal file CSV di device
+  /// [fileName]    : nama file (untuk multipart)
+  /// [accountId]   : UUID rekening tujuan
+  /// [bank]        : nama bank (BCA, Mandiri, dst.)
+  /// [dateFormat]  : format tanggal di CSV, misal "d/M/yyyy"
+  /// [typeDefault] : tipe default transaksi jika tidak terdeteksi otomatis
+  Future<ImportResultModel> upload({
+    required String filePath,
+    required String fileName,
+    required String accountId,
+    required String bank,
+    required String dateFormat,
+    required String typeDefault,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'account_id': accountId,
+        'bank': bank,
+        'date_format': dateFormat,
+        'type_default': typeDefault,
+        'file': await MultipartFile.fromFile(filePath, filename: fileName),
+      });
+
+      final res = await _api.dio.post<Map<String, dynamic>>(
+        ApiConstants.importUpload,
+        data: formData,
+        options: Options(headers: {'Content-Type': 'multipart/form-data'}),
+      );
+
+      return ImportResultModel.fromJson(
+          res.data!['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException.fromDio(e);
     }

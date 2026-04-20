@@ -9,7 +9,8 @@ import 'package:intl/intl.dart';
 import '../../core/constants/theme.dart';
 import '../../core/services/models.dart';
 import '../../core/services/repositories.dart';
-import '../../core/widgets/shared_widgets.dart';
+import 'package:finance_app_mobile/core/widgets/icon_circle.dart';
+import '../../core/widgets/shared_widgets.dart' hide IconCircle;
 
 // ── Providers di top-level ─────────────────────────────────────────────────────
 final _editTxProvider =
@@ -474,8 +475,8 @@ class _EditFormState extends ConsumerState<_EditForm> {
           padding: const EdgeInsets.only(bottom: 20),
           children: list
               .map((a) => ListTile(
-                    leading: IconCircle(
-                        emoji: a.icon ?? '💳', bgColor: FinaColors.icCopper),
+                    leading:
+                        IconCircle(icon: a.icon, bgColor: FinaColors.icCopper),
                     title: Text(a.name,
                         style: const TextStyle(color: FinaColors.text)),
                     subtitle: Text(formatCurrency(a.balance),
@@ -516,7 +517,7 @@ class _EditFormState extends ConsumerState<_EditForm> {
           children: [
             ListTile(
               leading:
-                  const IconCircle(emoji: '✕', bgColor: FinaColors.surface2),
+                  const IconCircle(icon: 'x', bgColor: FinaColors.surface2),
               title: const Text('Tanpa kategori',
                   style: TextStyle(color: FinaColors.text2)),
               onTap: () {
@@ -525,8 +526,8 @@ class _EditFormState extends ConsumerState<_EditForm> {
               },
             ),
             ...list.map((c) => ListTile(
-                  leading: IconCircle(
-                      emoji: c.icon ?? '📌', bgColor: FinaColors.icCopper),
+                  leading:
+                      IconCircle(icon: c.icon, bgColor: FinaColors.icCopper),
                   title: Text(c.name,
                       style: const TextStyle(color: FinaColors.text)),
                   trailing: _category?.id == c.id
@@ -548,7 +549,10 @@ class _EditFormState extends ConsumerState<_EditForm> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Image display widgets
 // ─────────────────────────────────────────────────────────────────────────────
-class _ExistingImageWidget extends StatelessWidget {
+
+/// Widget gambar yang sudah ada — bisa dari File lokal atau URL server.
+/// Untuk URL server, inject Bearer token karena route dilindungi auth:sanctum.
+class _ExistingImageWidget extends StatefulWidget {
   final String? imageUrl;
   final File? imageFile;
   final VoidCallback onChangeTap;
@@ -558,28 +562,94 @@ class _ExistingImageWidget extends StatelessWidget {
       : assert(imageUrl != null || imageFile != null);
 
   @override
+  State<_ExistingImageWidget> createState() => _ExistingImageWidgetState();
+}
+
+class _ExistingImageWidgetState extends State<_ExistingImageWidget> {
+  Map<String, String>? _headers;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.imageFile == null && widget.imageUrl != null) {
+      _loadToken();
+    }
+  }
+
+  Future<void> _loadToken() async {
+    final token = await ApiService().getToken();
+    if (mounted && token != null) {
+      setState(() => _headers = {'Authorization': 'Bearer $token'});
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onChangeTap,
+      onTap: widget.onChangeTap,
       child: Stack(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: imageFile != null
-                ? Image.file(imageFile!,
-                    width: double.infinity, height: 180, fit: BoxFit.cover)
-                : Image.network(imageUrl!,
+            child: widget.imageFile != null
+                // ── Gambar baru dari lokal ──────────────────────────────────
+                ? Image.file(
+                    widget.imageFile!,
                     width: double.infinity,
                     height: 180,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                  )
+                // ── Gambar lama dari server ─────────────────────────────────
+                : _headers == null
+                    ? Container(
+                        width: double.infinity,
+                        height: 180,
+                        color: FinaColors.surface2,
+                        alignment: Alignment.center,
+                        child: const CircularProgressIndicator(
+                            strokeWidth: 2, color: FinaColors.copper),
+                      )
+                    : Image.network(
+                        widget.imageUrl!,
+                        width: double.infinity,
+                        height: 180,
+                        fit: BoxFit.cover,
+                        headers: _headers!,
+                        loadingBuilder: (_, child, progress) => progress == null
+                            ? child
+                            : Container(
+                                width: double.infinity,
+                                height: 180,
+                                color: FinaColors.surface2,
+                                alignment: Alignment.center,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: FinaColors.copper,
+                                  value: progress.expectedTotalBytes != null
+                                      ? progress.cumulativeBytesLoaded /
+                                          progress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              ),
+                        errorBuilder: (_, __, ___) => Container(
                           height: 180,
                           color: FinaColors.surface2,
                           alignment: Alignment.center,
-                          child: const Icon(Icons.broken_image_outlined,
-                              color: FinaColors.text2, size: 36),
-                        )),
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.broken_image_outlined,
+                                  color: FinaColors.text2, size: 36),
+                              SizedBox(height: 8),
+                              Text('Gagal memuat gambar',
+                                  style: TextStyle(
+                                      fontSize: 11, color: FinaColors.text2)),
+                            ],
+                          ),
+                        ),
+                      ),
           ),
+          // ── Label "Ganti" ───────────────────────────────────────────────
           Positioned(
             right: 8,
             bottom: 8,

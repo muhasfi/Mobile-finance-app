@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/theme.dart';
 import '../../core/services/models.dart';
 import '../../core/services/repositories.dart';
-import '../../core/widgets/shared_widgets.dart';
+import 'package:finance_app_mobile/core/widgets/icon_circle.dart';
+import '../../core/widgets/shared_widgets.dart' hide IconCircle;
 
 final transactionDetailProvider =
     FutureProvider.autoDispose.family<TransactionModel, String>((ref, id) {
@@ -83,20 +84,13 @@ class TransactionDetailScreen extends ConsumerWidget {
             border: Border.all(color: FinaColors.border),
           ),
           child: Column(children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: tx.isIncome
-                    ? FinaColors.icGreen
-                    : tx.isTransfer
-                        ? FinaColors.icBlue
-                        : FinaColors.icRed,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              alignment: Alignment.center,
-              child: Text(tx.category?.icon ?? typeIcon,
-                  style: const TextStyle(fontSize: 28)),
+            IconCircle(
+              icon: tx.category?.icon,
+              bgColor: tx.isIncome
+                  ? FinaColors.icGreen
+                  : tx.isTransfer
+                      ? FinaColors.icBlue
+                      : FinaColors.icRed,
             ),
             const SizedBox(height: 16),
             Text(
@@ -208,47 +202,9 @@ class TransactionDetailScreen extends ConsumerWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                    tx.imageUrl!,
-                    width: double.infinity,
+                  child: _AuthImage(
+                    url: tx.imageUrl!,
                     height: 200,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (_, child, progress) {
-                      if (progress == null) return child;
-                      return Container(
-                        height: 200,
-                        decoration: BoxDecoration(
-                            color: FinaColors.surface2,
-                            borderRadius: BorderRadius.circular(16)),
-                        alignment: Alignment.center,
-                        child: CircularProgressIndicator(
-                          value: progress.expectedTotalBytes != null
-                              ? progress.cumulativeBytesLoaded /
-                                  progress.expectedTotalBytes!
-                              : null,
-                          color: FinaColors.copper,
-                          strokeWidth: 2,
-                        ),
-                      );
-                    },
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 200,
-                      decoration: BoxDecoration(
-                          color: FinaColors.surface2,
-                          borderRadius: BorderRadius.circular(16)),
-                      alignment: Alignment.center,
-                      child: const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.broken_image_outlined,
-                              color: FinaColors.text2, size: 36),
-                          SizedBox(height: 8),
-                          Text('Gambar tidak bisa dimuat',
-                              style: TextStyle(
-                                  color: FinaColors.text2, fontSize: 12)),
-                        ],
-                      ),
-                    ),
                   ),
                 ),
                 // Tap to fullscreen hint
@@ -312,12 +268,12 @@ class TransactionDetailScreen extends ConsumerWidget {
             ),
             body: Center(
               child: InteractiveViewer(
-                child: Image.network(imageUrl,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                        Icons.broken_image_outlined,
-                        color: Colors.white54,
-                        size: 64)),
+                child: _AuthImage(
+                  url: imageUrl,
+                  fit: BoxFit.contain,
+                  errorIcon: const Icon(Icons.broken_image_outlined,
+                      color: Colors.white54, size: 64),
+                ),
               ),
             ),
           ),
@@ -396,4 +352,94 @@ class _DetailRow extends StatelessWidget {
           )),
         ]),
       );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _AuthImage — Image.network dengan Bearer token otomatis
+// ─────────────────────────────────────────────────────────────────────────────
+class _AuthImage extends StatefulWidget {
+  final String url;
+  final double? height;
+  final BoxFit fit;
+  final Widget? errorIcon;
+
+  const _AuthImage({
+    required this.url,
+    this.height,
+    this.fit = BoxFit.cover,
+    this.errorIcon,
+  });
+
+  @override
+  State<_AuthImage> createState() => _AuthImageState();
+}
+
+class _AuthImageState extends State<_AuthImage> {
+  Map<String, String>? _headers;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadToken();
+  }
+
+  Future<void> _loadToken() async {
+    final token = await ApiService().getToken();
+    if (mounted && token != null) {
+      setState(() => _headers = {'Authorization': 'Bearer $token'});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_headers == null) {
+      return Container(
+        width: double.infinity,
+        height: widget.height,
+        color: FinaColors.surface2,
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(
+            strokeWidth: 2, color: FinaColors.copper),
+      );
+    }
+    return Image.network(
+      widget.url,
+      width: double.infinity,
+      height: widget.height,
+      fit: widget.fit,
+      headers: _headers!,
+      loadingBuilder: (_, child, progress) => progress == null
+          ? child
+          : Container(
+              width: double.infinity,
+              height: widget.height,
+              color: FinaColors.surface2,
+              alignment: Alignment.center,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: FinaColors.copper,
+                value: progress.expectedTotalBytes != null
+                    ? progress.cumulativeBytesLoaded /
+                        progress.expectedTotalBytes!
+                    : null,
+              ),
+            ),
+      errorBuilder: (_, __, ___) => Container(
+        height: widget.height ?? 200,
+        color: FinaColors.surface2,
+        alignment: Alignment.center,
+        child: widget.errorIcon ??
+            const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.broken_image_outlined,
+                    color: FinaColors.text2, size: 36),
+                SizedBox(height: 8),
+                Text('Gambar tidak bisa dimuat',
+                    style: TextStyle(color: FinaColors.text2, fontSize: 12)),
+              ],
+            ),
+      ),
+    );
+  }
 }

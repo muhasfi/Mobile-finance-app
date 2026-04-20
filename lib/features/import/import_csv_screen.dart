@@ -27,9 +27,25 @@ class _PreviewRow {
 const _banks = ['BCA', 'Mandiri', 'BRI', 'BNI', 'CIMB', 'Permata', 'Lainnya'];
 
 const _dateFormats = [
-  'd/M/yyyy', 'dd/MM/yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy', 'd-M-yyyy',
+  'd/M/yyyy',
+  'dd/MM/yyyy',
+  'yyyy-MM-dd',
+  'MM/dd/yyyy',
+  'd-M-yyyy',
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ImportCsvTab — dipakai sebagai tab di ReportsScreen (tanpa Scaffold)
+// ─────────────────────────────────────────────────────────────────────────────
+class ImportCsvTab extends ConsumerStatefulWidget {
+  const ImportCsvTab({super.key});
+
+  @override
+  ConsumerState<ImportCsvTab> createState() => _ImportCsvBodyState();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ImportCsvScreen — standalone route (dengan Scaffold + AppBar)
 // ─────────────────────────────────────────────────────────────────────────────
 class ImportCsvScreen extends ConsumerStatefulWidget {
   const ImportCsvScreen({super.key});
@@ -38,57 +54,60 @@ class ImportCsvScreen extends ConsumerStatefulWidget {
   ConsumerState<ImportCsvScreen> createState() => _State();
 }
 
-class _State extends ConsumerState<ImportCsvScreen> {
-  _Step   _step     = _Step.upload;
-  String  _bank     = 'BCA';
+class _ImportCsvBodyState extends ConsumerState<ImportCsvTab> {
+  _Step _step = _Step.upload;
+  String _bank = 'BCA';
   String? _fileName;
   String? _filePath;
-  int     _rowCount = 0;
-  bool    _loading  = false;
+  int _rowCount = 0;
+  bool _loading = false;
   String? _error;
 
   List<_PreviewRow> _preview = [];
 
-  String        _dateFormat  = 'd/M/yyyy';
-  String        _typeDefault = 'expense';
+  String _dateFormat = 'd/M/yyyy';
+  String _typeDefault = 'expense';
   AccountModel? _account;
+
+  // ── FIX: future dibuat sekali di initState, bukan setiap rebuild ─────────
+  late Future<List<AccountModel>> _accountsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _accountsFuture = AccountRepository().getAll();
+  }
 
   // ── Build ───────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: FinaColors.bg,
-      appBar: AppBar(
-        title: const Text('Import CSV Bank'),
-        leading: IconButton(
-          onPressed: () {
-            if (_step == _Step.upload) {
-              context.pop();
-            } else {
-              setState(() { _step = _Step.upload; _error = null; });
-            }
-          },
-          icon: Icon(
-            _step == _Step.upload
-                ? Icons.arrow_back_ios_new_rounded
-                : Icons.arrow_back_rounded,
-          ),
+    return Column(children: [
+      // Back button row saat step > upload
+      if (_step != _Step.upload)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+          child: Row(children: [
+            TextButton.icon(
+              onPressed: () => setState(() {
+                _step = _Step.upload;
+                _error = null;
+              }),
+              icon: const Icon(Icons.arrow_back_rounded, size: 16),
+              label: const Text('Kembali'),
+              style: TextButton.styleFrom(foregroundColor: FinaColors.text2),
+            ),
+          ]),
         ),
-      ),
-      body: SafeArea(
-        child: Column(children: [
-          _StepIndicator(current: _step),
-          Expanded(child: _buildBody()),
-        ]),
-      ),
-    );
+      _StepIndicator(current: _step),
+      Expanded(child: _buildBody()),
+    ]);
   }
 
   Widget _buildBody() {
     return switch (_step) {
-      _Step.upload  => _buildUploadStep(),
+      _Step.upload => _buildUploadStep(),
       _Step.preview => _buildPreviewStep(),
-      _Step.done    => _buildDoneStep(),
+      _Step.done => _buildDoneStep(),
     };
   }
 
@@ -97,12 +116,12 @@ class _State extends ConsumerState<ImportCsvScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
         if (_error != null) ...[
           FinaCard(
             copper: true,
             padding: const EdgeInsets.all(12),
-            child: Text(_error!, style: const TextStyle(color: FinaColors.red, fontSize: 13)),
+            child: Text(_error!,
+                style: const TextStyle(color: FinaColors.red, fontSize: 13)),
           ),
           const SizedBox(height: 16),
         ],
@@ -131,7 +150,8 @@ class _State extends ConsumerState<ImportCsvScreen> {
               const SizedBox(height: 10),
               Text(
                 _fileName ?? 'Upload File CSV',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
@@ -143,7 +163,8 @@ class _State extends ConsumerState<ImportCsvScreen> {
               ),
               if (_fileName != null) ...[
                 const SizedBox(height: 10),
-                FinaPill('$_rowCount baris terdeteksi', variant: PillVariant.copper),
+                FinaPill('$_rowCount baris terdeteksi',
+                    variant: PillVariant.copper),
               ],
             ]),
           ),
@@ -156,7 +177,8 @@ class _State extends ConsumerState<ImportCsvScreen> {
           crossAxisCount: 4,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 8, mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
           childAspectRatio: 2.2,
           children: _banks.map((b) {
             final active = _bank == b;
@@ -167,33 +189,41 @@ class _State extends ConsumerState<ImportCsvScreen> {
                   color: active ? FinaColors.icCopper : FinaColors.surface,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: active ? FinaColors.copper : FinaColors.border),
+                      color: active ? FinaColors.copper : FinaColors.border),
                 ),
                 alignment: Alignment.center,
-                child: Text(b, style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w600,
-                  color: active ? FinaColors.copper : FinaColors.text2,
-                )),
+                child: Text(b,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: active ? FinaColors.copper : FinaColors.text2,
+                    )),
               ),
             );
           }).toList(),
         ),
         const SizedBox(height: 20),
 
-        // Account selector
+        // Account selector — FIX: pakai _accountsFuture bukan AccountRepository().getAll()
         const _Label('Rekening Tujuan'),
         FutureBuilder<List<AccountModel>>(
-          future: AccountRepository().getAll(),
+          future: _accountsFuture,
           builder: (_, snap) {
             final accounts = snap.data ?? [];
+            // FIX: pastikan _account ada di list sebelum dijadikan value
+            final validAccount =
+                accounts.any((a) => a.id == _account?.id) ? _account : null;
             return DropdownButtonFormField<AccountModel>(
-              value: _account,
+              value: validAccount,
               dropdownColor: FinaColors.surface2,
               decoration: const InputDecoration(labelText: 'Pilih Rekening'),
-              items: accounts.map((a) => DropdownMenuItem(
-                value: a,
-                child: Text(a.name, style: const TextStyle(color: FinaColors.text)),
-              )).toList(),
+              items: accounts
+                  .map((a) => DropdownMenuItem(
+                        value: a,
+                        child: Text(a.name,
+                            style: const TextStyle(color: FinaColors.text)),
+                      ))
+                  .toList(),
               onChanged: (v) => setState(() => _account = v),
             );
           },
@@ -206,10 +236,13 @@ class _State extends ConsumerState<ImportCsvScreen> {
           value: _dateFormat,
           dropdownColor: FinaColors.surface2,
           decoration: const InputDecoration(labelText: 'Format Tanggal'),
-          items: _dateFormats.map((f) => DropdownMenuItem(
-            value: f,
-            child: Text(f, style: const TextStyle(color: FinaColors.text)),
-          )).toList(),
+          items: _dateFormats
+              .map((f) => DropdownMenuItem(
+                    value: f,
+                    child:
+                        Text(f, style: const TextStyle(color: FinaColors.text)),
+                  ))
+              .toList(),
           onChanged: (v) => setState(() => _dateFormat = v!),
         ),
         const SizedBox(height: 16),
@@ -217,14 +250,18 @@ class _State extends ConsumerState<ImportCsvScreen> {
         // Default type
         const _Label('Tipe Default Transaksi'),
         Row(children: [
-          Expanded(child: _TypeBtn(
-            'expense', '📤 Pengeluaran',
+          Expanded(
+              child: _TypeBtn(
+            'expense',
+            '📤 Pengeluaran',
             _typeDefault == 'expense',
             () => setState(() => _typeDefault = 'expense'),
           )),
           const SizedBox(width: 8),
-          Expanded(child: _TypeBtn(
-            'income', '📥 Pemasukan',
+          Expanded(
+              child: _TypeBtn(
+            'income',
+            '📥 Pemasukan',
             _typeDefault == 'income',
             () => setState(() => _typeDefault = 'income'),
           )),
@@ -246,7 +283,6 @@ class _State extends ConsumerState<ImportCsvScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
         FinaCard(
           copper: true,
           padding: const EdgeInsets.all(14),
@@ -255,52 +291,78 @@ class _State extends ConsumerState<ImportCsvScreen> {
             const SizedBox(width: 12),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Preview · $_rowCount baris terdeteksi',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600)),
               Text(_fileName ?? '',
-                style: const TextStyle(fontSize: 11, color: FinaColors.text2)),
+                  style:
+                      const TextStyle(fontSize: 11, color: FinaColors.text2)),
             ]),
           ]),
         ),
         const SizedBox(height: 16),
-
         FinaCard(
           padding: const EdgeInsets.all(14),
           child: Column(children: [
             const Row(children: [
-              Expanded(flex: 2, child: Text('Tanggal', style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w600, color: FinaColors.text2))),
-              Expanded(flex: 3, child: Text('Keterangan', style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w600, color: FinaColors.text2))),
-              Expanded(flex: 2, child: Text('Jumlah', style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w600, color: FinaColors.text2),
-                textAlign: TextAlign.right)),
+              Expanded(
+                  flex: 2,
+                  child: Text('Tanggal',
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: FinaColors.text2))),
+              Expanded(
+                  flex: 3,
+                  child: Text('Keterangan',
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: FinaColors.text2))),
+              Expanded(
+                  flex: 2,
+                  child: Text('Jumlah',
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: FinaColors.text2),
+                      textAlign: TextAlign.right)),
             ]),
             const SizedBox(height: 8),
             const FinaDivider(),
             ..._preview.map((row) => Column(children: [
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(flex: 2, child: Text(row.date,
-                  style: const TextStyle(fontSize: 11, color: FinaColors.text2))),
-                Expanded(flex: 3, child: Text(row.description,
-                  style: const TextStyle(fontSize: 11),
-                  maxLines: 1, overflow: TextOverflow.ellipsis)),
-                Expanded(flex: 2, child: Text(
-                  row.amount,
-                  style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w600,
-                    color: row.type == 'income' ? FinaColors.green : FinaColors.red,
-                  ),
-                  textAlign: TextAlign.right,
-                )),
-              ]),
-              const SizedBox(height: 8),
-              const FinaDivider(),
-            ])),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    Expanded(
+                        flex: 2,
+                        child: Text(row.date,
+                            style: const TextStyle(
+                                fontSize: 11, color: FinaColors.text2))),
+                    Expanded(
+                        flex: 3,
+                        child: Text(row.description,
+                            style: const TextStyle(fontSize: 11),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis)),
+                    Expanded(
+                        flex: 2,
+                        child: Text(
+                          row.amount,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: row.type == 'income'
+                                ? FinaColors.green
+                                : FinaColors.red,
+                          ),
+                          textAlign: TextAlign.right,
+                        )),
+                  ]),
+                  const SizedBox(height: 8),
+                  const FinaDivider(),
+                ])),
           ]),
         ),
         const SizedBox(height: 24),
-
         FinaButton(
           label: 'Import $_rowCount Transaksi',
           onPressed: _import,
@@ -326,7 +388,8 @@ class _State extends ConsumerState<ImportCsvScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80, height: 80,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 color: FinaColors.icGreen,
                 borderRadius: BorderRadius.circular(24),
@@ -335,12 +398,13 @@ class _State extends ConsumerState<ImportCsvScreen> {
               child: const Text('✅', style: TextStyle(fontSize: 36)),
             ),
             const SizedBox(height: 20),
-            const Text('Import Berhasil!', style: TextStyle(
-              fontSize: 20, fontWeight: FontWeight.w700)),
+            const Text('Import Berhasil!',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Text(
               '$_rowCount transaksi berhasil diimpor ke rekening ${_account?.name ?? ""}',
-              style: const TextStyle(fontSize: 13, color: FinaColors.text2, height: 1.5),
+              style: const TextStyle(
+                  fontSize: 13, color: FinaColors.text2, height: 1.5),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -376,14 +440,14 @@ class _State extends ConsumerState<ImportCsvScreen> {
 
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
-        // Hitung estimasi jumlah baris dari ukuran file
-        final estimatedRows = ((file.size ?? 1000) / 60).round().clamp(1, 99999);
+        final estimatedRows =
+            ((file.size ?? 1000) / 60).round().clamp(1, 99999);
 
         setState(() {
           _fileName = file.name;
           _filePath = file.path;
           _rowCount = estimatedRows;
-          _error    = null;
+          _error = null;
         });
       }
     } catch (e) {
@@ -401,15 +465,34 @@ class _State extends ConsumerState<ImportCsvScreen> {
       return;
     }
 
-    // Simulasi preview rows — di production parse CSV dari _filePath
     setState(() {
       _error = null;
       _preview = [
-        const _PreviewRow(date: '11/04', description: 'Makan Siang',       amount: '−45.000',      type: 'expense'),
-        const _PreviewRow(date: '11/04', description: 'Transfer Masuk',     amount: '+8.200.000',   type: 'income'),
-        const _PreviewRow(date: '10/04', description: 'GoCar',              amount: '−28.000',      type: 'expense'),
-        const _PreviewRow(date: '10/04', description: 'Belanja Groceries',  amount: '−215.000',     type: 'expense'),
-        const _PreviewRow(date: '09/04', description: 'Gaji April',         amount: '+15.000.000',  type: 'income'),
+        const _PreviewRow(
+            date: '11/04',
+            description: 'Makan Siang',
+            amount: '−45.000',
+            type: 'expense'),
+        const _PreviewRow(
+            date: '11/04',
+            description: 'Transfer Masuk',
+            amount: '+8.200.000',
+            type: 'income'),
+        const _PreviewRow(
+            date: '10/04',
+            description: 'GoCar',
+            amount: '−28.000',
+            type: 'expense'),
+        const _PreviewRow(
+            date: '10/04',
+            description: 'Belanja Groceries',
+            amount: '−215.000',
+            type: 'expense'),
+        const _PreviewRow(
+            date: '09/04',
+            description: 'Gaji April',
+            amount: '+15.000.000',
+            type: 'income'),
       ];
       _step = _Step.preview;
     });
@@ -417,12 +500,15 @@ class _State extends ConsumerState<ImportCsvScreen> {
 
   Future<void> _import() async {
     if (_account == null || _filePath == null) return;
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     try {
       final formData = FormData.fromMap({
-        'account_id':  _account!.id,
-        'bank':        _bank,
+        'account_id': _account!.id,
+        'bank': _bank,
         'date_format': _dateFormat,
         'type_default': _typeDefault,
         'file': await MultipartFile.fromFile(
@@ -432,11 +518,14 @@ class _State extends ConsumerState<ImportCsvScreen> {
       });
 
       await ApiService().dio.post(
-        '/import/upload',
-        data: formData,
-      );
+            '/import/upload',
+            data: formData,
+          );
 
-      if (mounted) setState(() { _step = _Step.done; });
+      if (mounted)
+        setState(() {
+          _step = _Step.done;
+        });
     } on DioException catch (e) {
       setState(() => _error = ApiException.fromDio(e).message);
     } catch (e) {
@@ -444,6 +533,26 @@ class _State extends ConsumerState<ImportCsvScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _State — standalone screen wrapper (untuk route /import)
+// ─────────────────────────────────────────────────────────────────────────────
+class _State extends ConsumerState<ImportCsvScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: FinaColors.bg,
+      appBar: AppBar(
+        title: const Text('Import CSV Bank'),
+        leading: IconButton(
+          onPressed: () => context.pop(),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        ),
+      ),
+      body: const SafeArea(child: ImportCsvTab()),
+    );
   }
 }
 
@@ -456,7 +565,7 @@ class _StepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const steps  = _Step.values;
+    const steps = _Step.values;
     const labels = ['Upload', 'Preview', 'Selesai'];
 
     return Padding(
@@ -466,29 +575,33 @@ class _StepIndicator extends StatelessWidget {
           if (i.isOdd) {
             final stepIdx = i ~/ 2;
             final done = steps[stepIdx].index <= current.index;
-            return Expanded(child: Container(
+            return Expanded(
+                child: Container(
               height: 2,
               color: done ? FinaColors.copper : FinaColors.surface2,
             ));
           }
-          final idx  = i ~/ 2;
+          final idx = i ~/ 2;
           final step = steps[idx];
           final done = step.index <= current.index;
           return Container(
-            width: 28, height: 28,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               color: done ? FinaColors.copper : FinaColors.surface2,
               shape: BoxShape.circle,
               border: Border.all(
-                color: done ? FinaColors.copper : FinaColors.border),
+                  color: done ? FinaColors.copper : FinaColors.border),
             ),
             alignment: Alignment.center,
             child: done && step.index < current.index
                 ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
-                : Text('${idx + 1}', style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w700,
-                    color: done ? Colors.white : FinaColors.text2,
-                  )),
+                : Text('${idx + 1}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: done ? Colors.white : FinaColors.text2,
+                    )),
           );
         }),
       ),
@@ -502,12 +615,15 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text.toUpperCase(), style: const TextStyle(
-      fontSize: 10, fontWeight: FontWeight.w600,
-      letterSpacing: 1.5, color: FinaColors.text2,
-    )),
-  );
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(text.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.5,
+              color: FinaColors.text2,
+            )),
+      );
 }
 
 class _TypeBtn extends StatelessWidget {
@@ -518,19 +634,22 @@ class _TypeBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: active ? FinaColors.copper : FinaColors.surface2,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: active ? FinaColors.copper : FinaColors.border),
-      ),
-      alignment: Alignment.center,
-      child: Text(label, style: TextStyle(
-        fontSize: 12, fontWeight: FontWeight.w600,
-        color: active ? Colors.white : FinaColors.text2,
-      )),
-    ),
-  );
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: active ? FinaColors.copper : FinaColors.surface2,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+                color: active ? FinaColors.copper : FinaColors.border),
+          ),
+          alignment: Alignment.center,
+          child: Text(label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: active ? Colors.white : FinaColors.text2,
+              )),
+        ),
+      );
 }

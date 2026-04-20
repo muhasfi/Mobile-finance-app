@@ -9,7 +9,8 @@ import 'package:intl/intl.dart';
 import '../../core/constants/theme.dart';
 import '../../core/services/models.dart';
 import '../../core/services/repositories.dart';
-import '../../core/widgets/shared_widgets.dart';
+import 'package:finance_app_mobile/core/widgets/icon_circle.dart';
+import '../../core/widgets/shared_widgets.dart' hide IconCircle;
 
 // ── Providers ─────────────────────────────────────────────────────────────────
 final _addAccountsProvider = FutureProvider.autoDispose<List<AccountModel>>(
@@ -411,8 +412,8 @@ class _State extends ConsumerState<AddTransactionScreen> {
         title: 'Pilih Rekening',
         children: list
             .map((a) => ListTile(
-                  leading: IconCircle(
-                      emoji: a.icon ?? '💳', bgColor: FinaColors.icCopper),
+                  leading:
+                      IconCircle(icon: a.icon, bgColor: FinaColors.icCopper),
                   title: Text(a.name,
                       style: const TextStyle(color: FinaColors.text)),
                   subtitle: Text(formatCurrency(a.balance),
@@ -442,7 +443,7 @@ class _State extends ConsumerState<AddTransactionScreen> {
         title: 'Pilih Kategori',
         children: [
           ListTile(
-            leading: const IconCircle(emoji: '✕', bgColor: FinaColors.surface2),
+            leading: const IconCircle(icon: 'x', bgColor: FinaColors.surface2),
             title: const Text('Tanpa kategori',
                 style: TextStyle(color: FinaColors.text2)),
             onTap: () {
@@ -451,8 +452,7 @@ class _State extends ConsumerState<AddTransactionScreen> {
             },
           ),
           ...list.map((c) => ListTile(
-                leading: IconCircle(
-                    emoji: c.icon ?? '📌', bgColor: FinaColors.icCopper),
+                leading: IconCircle(icon: c.icon, bgColor: FinaColors.icCopper),
                 title: Text(c.name,
                     style: const TextStyle(color: FinaColors.text)),
                 trailing: _category?.id == c.id
@@ -528,63 +528,20 @@ class _ImagePickerWidget extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        height: 100,
+        height: 80,
         decoration: BoxDecoration(
           color: FinaColors.surface2,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: FinaColors.border,
-            style: BorderStyle.solid,
-          ),
+          border: Border.all(color: FinaColors.border),
         ),
-        child: Column(
+        child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: FinaColors.icBlue,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(children: [
-                    Icon(Icons.camera_alt_rounded,
-                        color: FinaColors.blue, size: 16),
-                    SizedBox(width: 6),
-                    Text('Kamera',
-                        style: TextStyle(
-                            color: FinaColors.blue,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600)),
-                  ]),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: FinaColors.icGreen,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(children: [
-                    Icon(Icons.photo_library_rounded,
-                        color: FinaColors.green, size: 16),
-                    SizedBox(width: 6),
-                    Text('Galeri',
-                        style: TextStyle(
-                            color: FinaColors.green,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600)),
-                  ]),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text('Tambah foto struk (opsional)',
-                style: TextStyle(fontSize: 11, color: FinaColors.muted)),
+            Icon(Icons.add_photo_alternate_outlined,
+                color: FinaColors.text2, size: 20),
+            SizedBox(width: 8),
+            Text('Tambah foto struk (opsional)',
+                style: TextStyle(fontSize: 13, color: FinaColors.text2)),
           ],
         ),
       ),

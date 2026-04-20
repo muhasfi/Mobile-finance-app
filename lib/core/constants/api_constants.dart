@@ -7,6 +7,8 @@ class ApiConstants {
   static const login = '/auth/login';
   static const register = '/auth/register';
   static const logout = '/auth/logout';
+  static const emailResend = '/auth/email/resend';
+  static const emailStatus = '/auth/email/status';
   static const me = '/auth/me';
   static const updateMe = '/auth/me';
   static const changePass = '/auth/me/password';
